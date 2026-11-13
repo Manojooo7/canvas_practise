@@ -1,8 +1,35 @@
-import { useEffect, useRef } from "react"
+import { useEffect, useRef, useState } from "react"
+import {Pen, Circle, Square, Triangle, Save, RemoveFormatting, type LucideIcon} from 'lucide-react'
+import {Button} from '../components/ui/button'
+type tool = {
+  label: string,
+  icon: LucideIcon
+}
+
+const TOOLS:tool[] = [
+  {
+    label: "pen",
+    icon: Pen
+  },
+  {
+    label: "circle",
+    icon: Circle
+  },
+  {
+    label: "square",
+    icon: Square
+  },
+  {
+    label: "triangle",
+    icon: Triangle
+  },
+  
+]
 
 function App() {
 
   const canvasRef = useRef<HTMLCanvasElement | null>(null)
+  const [selectedTool, setSelectedTool] = useState<string>('pen')
   useEffect(()=>{
     const canvas = canvasRef.current;
     if(!canvas) return;
@@ -106,8 +133,15 @@ function App() {
 
   },[]);
 
+  
+
+  const handleToolSelection=(tool:string)=> setSelectedTool(tool)
+
+
+
+  console.log()
   const saveCanvasImage = () =>{
-    const canvas = canvasRef.current;
+    const canvas = canvasRef.current
     if(!canvas) return
     const dataUrl = canvas.toDataURL('image/png');
     const link = document.createElement('a')
@@ -117,20 +151,66 @@ function App() {
   }
 
   const clearCanvas = () =>{
-    const canvas = canvasRef.current;
+    const canvas = canvasRef.current
     const context = canvas?.getContext('2d')
     if(!canvas || !context) return;
     context.clearRect(0, 0, canvas.width, canvas.height)
   }
 
-  console.log(canvasRef.current)
+type ACTION = {
+  label: string,
+  icon: LucideIcon,
+  action: () => void,
+}
+
+const ACTIONS:ACTION[] = [
+  {
+    label: "save",
+    icon: Save,
+    action: saveCanvasImage
+  },
+  {
+    label: "clear",
+    icon: RemoveFormatting,
+    action: clearCanvas
+  }
+]
   return (
     <>
-      <div className="flex w-screen h-screen bg-slate-100 overflow-hidden">
-        {/* <div className="flex justify-between align-middle items-center mt-5 gap-7">
-          <button onClick={saveCanvasImage} className="bg-blue-500 text-white px-5 py-2 rounded-sm">Download</button>
-          <button onClick={clearCanvas} className="bg-blue-500 text-white px-5 py-2 rounded-sm">Clear</button>
-        </div> */}
+      <div className="w-screen h-screen bg-slate-100 overflow-hidden relative">
+        <div className="absolute bottom-3 left-1/2 -translate-x-1/2 bg-slate-300 shadow-2xl p-4 flex justify-center align-middle rounded-sm">
+          <div className="flex justify-between align-middle items-center gap-x-7">
+            {TOOLS.map((tool) =>{ 
+              const Icon = tool.icon
+              return(
+              <Button variant={'outline'} size={'icon'} onClick={()=> handleToolSelection(tool.label)} 
+              className={`px-5 py-2 rounded-sm 
+                ${selectedTool === tool.label
+                  ? "bg-slate-900 text-white hover:bg-slate-800 hover:text-white"
+                  : "bg-white text-black hover:bg-slate-100 hover:text-black"
+                }
+              `}>
+                <Icon size={24}/>
+              </Button>
+              )
+            })}
+
+            {ACTIONS.map((action) =>{ 
+              const Icon = action.icon
+              return(
+              <Button variant={'outline'} size={'icon'} onClick={action.action} 
+              className={`px-5 py-2 rounded-sm 
+                ${selectedTool === action.label
+                  ? "bg-slate-900 text-white hover:bg-slate-800 hover:text-white"
+                  : "bg-white text-black hover:bg-slate-100 hover:text-black"
+                }
+              `}>
+                <Icon size={24}/>
+              </Button>
+              )
+            })}
+          </div>
+        </div>
        <canvas ref={canvasRef}
         className="block w-full h-full bg-white"/>
       </div>
