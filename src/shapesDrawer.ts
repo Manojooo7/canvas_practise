@@ -63,11 +63,27 @@ export const drawingCircle=(
     ctx.stroke()
 }
 
+export const drawingTriange=(
+    ctx:Ctx,
+    x:number,
+    y:number,
+    startX: number,
+    startY: number
+):void =>{
+    ctx.beginPath();
+    ctx.moveTo((startX + x) / 2, startY),
+    ctx.lineTo(x, y)
+    ctx.lineTo(startX, y)
+    ctx.closePath()
+    ctx.stroke()
+}
+
 type ShapeFn = (ctx: Ctx, x: number, y: number, startX: number, startY: number) => void
 
 const SHAPES:Record<string, ShapeFn> = {
     square: drawingRectangle,
-    circle: drawingCircle
+    circle: drawingCircle,
+    triangle: drawingTriange
 }
 
 

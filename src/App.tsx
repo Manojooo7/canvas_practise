@@ -197,7 +197,7 @@ function App() {
 
 
 
-  console.log(selectedTool)
+  // console.log(selectedTool)
   const saveCanvasImage = () =>{
     const canvas = canvasRef.current
     if(!canvas) return
