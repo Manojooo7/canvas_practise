@@ -19,6 +19,22 @@ export const drawingWithPen=(
     context.stroke();
 }
 
+export const drawingLine=(
+    context:Ctx,
+    x:number,
+    y:number,
+    lastX: number,
+    lastY: number
+):void =>{
+
+    context.beginPath()
+    context.moveTo(x,y)
+    context.lineTo(
+        lastX,
+        lastY,
+    );
+    context.stroke()
+}
 
 export const drawingRectangle=(
     context:Ctx,
@@ -63,7 +79,7 @@ export const drawingCircle=(
     ctx.stroke()
 }
 
-export const drawingTriange=(
+export const drawingTriangle=(
     ctx:Ctx,
     x:number,
     y:number,
@@ -78,12 +94,50 @@ export const drawingTriange=(
     ctx.stroke()
 }
 
+export const drawingRightangleTriange=(
+    ctx:Ctx,
+    x:number,
+    y:number,
+    startX: number,
+    startY: number
+):void =>{
+    
+    ctx.beginPath();
+    ctx.moveTo(startX, startY),
+    ctx.lineTo(x, y)
+    ctx.lineTo(startX, y)
+    ctx.closePath()
+    ctx.stroke()
+}
+
+
+export const drawingDiamond=(
+    ctx:Ctx,
+    x:number,
+    y:number,
+    startX: number,
+    startY: number
+):void =>{
+    let midX = (startX + x) / 2
+    let midY = (startY + y) / 2
+    ctx.beginPath();
+    ctx.moveTo(midX, startY),
+    ctx.lineTo(x, midY)
+    ctx.lineTo(midX, y)
+    ctx.lineTo(startX, midY)
+    ctx.closePath()
+    ctx.stroke()
+}
+
 type ShapeFn = (ctx: Ctx, x: number, y: number, startX: number, startY: number) => void
 
 const SHAPES:Record<string, ShapeFn> = {
+    line: drawingLine,
     square: drawingRectangle,
     circle: drawingCircle,
-    triangle: drawingTriange
+    triangle: drawingTriangle,
+    rightangletriangle: drawingRightangleTriange,
+    diamond: drawingDiamond,
 }
 
 

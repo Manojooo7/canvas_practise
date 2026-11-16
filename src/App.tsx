@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from "react"
-import {Pen, Circle, Square, Triangle, Save, RemoveFormatting, type LucideIcon} from 'lucide-react'
+import {Pen, Circle, Square, Triangle, Save, RemoveFormatting, type LucideIcon, Diamond, PenLine, TriangleRightIcon} from 'lucide-react'
 import {Button} from '../components/ui/button'
 import { darwWithTool} from "./shapesDrawer"
 type tool = {
@@ -13,6 +13,10 @@ const TOOLS:tool[] = [
     icon: Pen
   },
   {
+    label: "line",
+    icon: PenLine
+  },
+  {
     label: "circle",
     icon: Circle
   },
@@ -23,7 +27,15 @@ const TOOLS:tool[] = [
   {
     label: "triangle",
     icon: Triangle
-  }, 
+  },
+  {
+    label: "rightangletriangle",
+    icon: TriangleRightIcon
+  },
+  {
+    label: "diamond",
+    icon: Diamond
+  },  
 ]
 
 function App() {
