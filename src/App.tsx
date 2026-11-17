@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState } from "react"
-import {Pen, Circle, Square, Triangle, Save, RemoveFormatting, type LucideIcon, Diamond, PenLine, TriangleRightIcon} from 'lucide-react'
+import {Pen, Circle, Square, Triangle, Save, RemoveFormatting, type LucideIcon, Diamond, PenLine, TriangleRightIcon, Move} from 'lucide-react'
 import {Button} from '../components/ui/button'
-import { darwWithTool} from "./shapesDrawer"
+import {drawShape, hitTest, isBoxTool, moveShape, type Shape} from "./shapesDrawer"
 type tool = {
   label: string,
   icon: LucideIcon
@@ -35,6 +35,10 @@ const TOOLS:tool[] = [
   {
     label: "diamond",
     icon: Diamond
+  },
+  {
+    label: "move",
+    icon: Move
   },  
 ]
 
@@ -44,6 +48,7 @@ function App() {
   const preveiewCanvasRef = useRef<HTMLCanvasElement | null>(null);
   const [selectedTool, setSelectedTool] = useState<string>('pen')
   const selectedToolRef = useRef(selectedTool);
+ 
   useEffect(() => {
     selectedToolRef.current = selectedTool
   },[selectedTool])
@@ -56,14 +61,18 @@ function App() {
     const context = canvas.getContext('2d');
     const previewCanvasContext = previewCanvas.getContext('2d')
     
-    if (!context || !previewCanvasContext) return;
-
+    let draft: Shape | null = null;
+    let grabbed: Shape | null = null;
     let isDrawing = false;
-    let startX = 0;
-    let startY = 0;
-
     let lastX = 0;
     let lastY = 0;
+    const shapes: Shape[] = [];
+    if (!context || !previewCanvasContext) return;
+    const clear = (c:CanvasRenderingContext2D, el:HTMLCanvasElement)=> c.clearRect(0, 0, el.clientWidth, el.clientHeight)
+    const render = () => {
+      clear(context, canvas)
+      shapes.forEach(s => drawShape(context, s))
+    }
 
     const resizeCanvas=()=>{
       const rect = canvas.getBoundingClientRect();
@@ -88,9 +97,6 @@ function App() {
 
     resizeCanvas();
     window.addEventListener('resize', resizeCanvas)
-
-
-
     
     const getPosition=(event:MouseEvent) => {
       const rect = previewCanvas.getBoundingClientRect();
@@ -107,80 +113,76 @@ function App() {
       previewCanvas.setPointerCapture(event.pointerId);
       
       const {x, y} = getPosition(event);
-      startX = x;
-      startY = y;
-
-      lastX = x;
-      lastY = y;
-
-      context.beginPath()
-      context.moveTo(x,y)
-    }
-
-    const draw = (event:MouseEvent) => {
-      if(!isDrawing) return;
-      const {x, y} = getPosition(event);
       const tool = selectedToolRef.current;
-
-      if (tool === "pen") {
-        darwWithTool(
-          tool,
-          context,
-          x,
-          y,
-          lastX,
-          lastY
-        );
-
+      
+      if(tool === 'move'){
+        grabbed = [...shapes].reverse().find(s => hitTest(s, x, y)) ?? null;
         lastX = x;
         lastY = y;
         return;
-    }
-      // Clear previous preview
-      previewCanvasContext.clearRect(
-        0,
-        0,
-        previewCanvas.width,
-        previewCanvas.height
-      );
+      }
 
-      darwWithTool(
-        tool, 
-        previewCanvasContext, 
-        x, 
-        y, 
-        tool === "pen" ? lastX : startX, 
-        tool === "pen" ? lastY : startY,
-      )
-      lastX = x;
-      lastY = y;
+      const base = {
+        id: crypto.randomUUID(),
+        filled: false,
+        strok: true,
+        fillColor: '#000',
+        strokColor: '#000'
+      }
+
+
+      if(tool === 'pen') draft = {...base, tool, closed: false, points:[{x,y}]}
+      else if(isBoxTool(tool)) draft = {...base, tool, start:{x,y}, end:{x,y}}
+      
+      // startX = x;
+      // startY = y;
+
+      // lastX = x;
+      // lastY = y;
+
+      // context.beginPath()
+      // context.moveTo(x,y)
+    }
+    console.log(shapes);
+    
+
+    const draw = (event:MouseEvent) => {
+      if(!isDrawing) return;
+      const p = getPosition(event);
+      
+      if(grabbed){
+        moveShape(grabbed, p.x - lastX, p.y - lastY);
+        lastX = p.x;
+        lastY = p.y;
+        render();
+        return;
+      }
+
+      if(!draft) return;
+      if(draft.tool === 'pen') draft.points.push(p);
+      else draft.end = p
+
+      console.log("Draft: ", draft);
+      console.log("Shapes: ", shapes);
+      console.log("Grab: ", grabbed)
+      
+
+      clear(previewCanvasContext, previewCanvas)
+      drawShape(previewCanvasContext, draft)
     }
 
     // Stop Drawing
 
     const stopDrawing=(event:PointerEvent)=>{
+      if(!isDrawing) return;
       isDrawing = false;
-      const {x,y} = getPosition(event)
-      const tool = selectedToolRef.current;
-      if (tool !== "pen") {
-        darwWithTool(
-          tool,
-          context,
-          x,
-          y,
-          startX,
-          startY
-        );
-
-        previewCanvasContext.clearRect(
-          0,
-          0,
-          previewCanvas.width,
-          previewCanvas.height
-        );
+      grabbed = null;
+      if(draft){
+        shapes.push(draft);
+        draft = null;
+        clear(previewCanvasContext, previewCanvas)
+        render() 
       }
-
-      context.closePath();
     }
 
     previewCanvas.addEventListener('pointerdown', startDrawing);
@@ -221,11 +223,13 @@ function App() {
   }
 
   const clearCanvas = () =>{
-    const canvas = canvasRef.current
+    const canvas = preveiewCanvasRef.current;
     const context = canvas?.getContext('2d')
     if(!canvas || !context) return;
     context.clearRect(0, 0, canvas.width, canvas.height)
   }
+
+  
 
 type ACTION = {
   label: string,

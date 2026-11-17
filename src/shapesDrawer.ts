@@ -1,154 +1,142 @@
 type Ctx = CanvasRenderingContext2D;
+type Point = {x:number, y:number};
 
-export const drawingWithPen=(
-    context:Ctx,
-    x:number,
-    y:number,
-    lastX: number,
-    lastY: number
-):void =>{
-    const midX = (lastX + x) / 2;
-    const midY = (lastY + y) / 2;
+export const BOX_SHAPES = {
 
-    context.quadraticCurveTo(
-    lastX,
-    lastY,
-    midX,
-    midY
-    );
-    context.stroke();
-}
+    line:(p, a, b)=>{
+        p.moveTo(
+            a.x,
+            a.y,)
+        p.lineTo(
+            b.x,
+            b.y
+        )
+    },
 
-export const drawingLine=(
-    context:Ctx,
-    x:number,
-    y:number,
-    lastX: number,
-    lastY: number
-):void =>{
+    square: (p,a,b)=>{
+        p.rect(
+            a.x,
+            a.y,
+            b.x - a.x,
+            b.y - a.y
+        );
+    },
 
-    context.beginPath()
-    context.moveTo(x,y)
-    context.lineTo(
-        lastX,
-        lastY,
-    );
-    context.stroke()
-}
+    circle:(p,a,b) =>{
+        // const rx = Math.abs(b.x - a.x) / 2;
+        // const ry = Math.abs(b.y - a.y) / 2;
 
-export const drawingRectangle=(
-    context:Ctx,
-    x:number,
-    y:number,
-    lastX: number,
-    lastY: number
-):void =>{
-    const width = x - lastX;
-    const height = y - lastY;
+        // if(rx === 0 || ry === 0) return;
+        // ctx.beginPath();
 
-    context.strokeRect(
-        lastX,
-        lastY,
-        width,
-        height
-    );
-}
+        p.ellipse(
+            (a.x + b.x) / 2,
+            (a.y + b.y) / 2,
+            Math.abs(b.x - a.x) / 2,
+            Math.abs(b.y - a.y) / 2,
+            0,
+            0,
+            Math.PI * 2
+        );
+    },
 
-export const drawingCircle=(
-    ctx:Ctx,
-    x:number,
-    y:number,
-    startX: number,
-    startY: number
-):void =>{
-    const rx = Math.abs(x - startX) / 2;
-    const ry = Math.abs(y - startY) / 2;
+    triangle:(p,a,b)=>{
+        p.moveTo((a.x + b.x) / 2, a.y),
+        p.lineTo(b.x, b.y)
+        p.lineTo(a.x, b.y)
+        p.closePath()
+    },
 
-    if(rx === 0 || ry === 0) return;
-    ctx.beginPath();
+    rightangletriangle:(p,a,b)=>{
+        
+        p.moveTo(a.x, a.y),
+        p.lineTo(b.x, b.y)
+        p.lineTo(a.x, b.y)
+        p.closePath()
+    },
 
-    ctx.ellipse(
-        (startX + x) / 2,
-        (startY + y) / 2,
-        rx,
-        ry,
-        0,
-        0,
-        Math.PI * 2
-    );
-    ctx.stroke()
-}
 
-export const drawingTriangle=(
-    ctx:Ctx,
-    x:number,
-    y:number,
-    startX: number,
-    startY: number
-):void =>{
-    ctx.beginPath();
-    ctx.moveTo((startX + x) / 2, startY),
-    ctx.lineTo(x, y)
-    ctx.lineTo(startX, y)
-    ctx.closePath()
-    ctx.stroke()
-}
+    diamond:(p,a,b)=>{
+        const mx = (a.x + b.x) / 2
+        const my = (a.y + b.y) / 2
+        p.moveTo(mx, a.y),
+        p.lineTo(b.x, my)
+        p.lineTo(mx, b.y)
+        p.lineTo(a.x, my)
+        p.closePath()
+    },
+} satisfies Record<string, (p:Path2D, a:Point, b:Point) => void>
 
-export const drawingRightangleTriange=(
-    ctx:Ctx,
-    x:number,
-    y:number,
-    startX: number,
-    startY: number
-):void =>{
-    
-    ctx.beginPath();
-    ctx.moveTo(startX, startY),
-    ctx.lineTo(x, y)
-    ctx.lineTo(startX, y)
-    ctx.closePath()
-    ctx.stroke()
+export type BoxTool = keyof typeof BOX_SHAPES
+
+export const isBoxTool = (t: string): t is BoxTool => t in BOX_SHAPES
+
+export type Shape = {id: string; filled: boolean; strok: boolean; fillColor: string, strokColor:string} & (
+    | {tool: 'pen'; points: Point[]; closed: boolean}
+    | {tool: BoxTool; start: Point; end: Point}
+);
+
+const buildPath = (s:Shape):Path2D =>{
+    const p = new Path2D();
+    if(s.tool === 'pen'){
+        const pts = s.points;
+        p.moveTo(pts[0].x, pts[0].y)
+        for(let i = 1; i < pts.length - 1; i++){
+            const mx = (pts[i].x + pts[i+1].x) / 2;
+            const my = (pts[i].y + pts[i+1].y) / 2;
+
+            p.quadraticCurveTo(
+                pts[i].x,
+                pts[i].y,
+                mx,
+                my
+            );
+        }
+        const last = pts[pts.length - 1]
+        p.lineTo(last.x, last.y);
+        if(s.closed) p.closePath();
+        return p;
+    }
+    BOX_SHAPES[s.tool](p, s.start, s.end)
+    return p
 }
 
 
-export const drawingDiamond=(
-    ctx:Ctx,
-    x:number,
-    y:number,
-    startX: number,
-    startY: number
-):void =>{
-    let midX = (startX + x) / 2
-    let midY = (startY + y) / 2
-    ctx.beginPath();
-    ctx.moveTo(midX, startY),
-    ctx.lineTo(x, midY)
-    ctx.lineTo(midX, y)
-    ctx.lineTo(startX, midY)
-    ctx.closePath()
-    ctx.stroke()
-}
+// type ShapeFn = (ctx: Ctx, x: number, y: number, startX: number, startY: number) => void
 
-type ShapeFn = (ctx: Ctx, x: number, y: number, startX: number, startY: number) => void
-
-const SHAPES:Record<string, ShapeFn> = {
-    line: drawingLine,
-    square: drawingRectangle,
-    circle: drawingCircle,
-    triangle: drawingTriangle,
-    rightangletriangle: drawingRightangleTriange,
-    diamond: drawingDiamond,
-}
+// const SHAPES:Record<string, ShapeFn> = {
+//     line: drawingLine,
+//     square: drawingRectangle,
+//     circle: drawingCircle,
+//     triangle: drawingTriangle,
+//     rightangletriangle: drawingRightangleTriange,
+//     diamond: drawingDiamond,
+// }
 
 
-export const darwWithTool = (
-    tool: string,
-    context:Ctx,
-    x:number,
-    y:number,
-    lastX: number,
-    lastY: number
+export const drawShape = (
+    ctx: Ctx,
+    s: Shape
 ) =>{
-    if(tool === 'pen') return drawingWithPen(context, x, y, lastX, lastY);
-    SHAPES[tool]?.(context, x, y, lastX, lastY)
+    const path = buildPath(s);
+    ctx.fillStyle = ctx.strokeStyle = s.strokColor;
+    if(s.filled && (s.tool !== 'pen' || s.closed)) ctx.fill(path);
+    if(s.strok) ctx.stroke(path)
+}
+
+const hitCtx = document.createElement('canvas').getContext('2d')!;
+hitCtx.lineWidth = 20;
+
+export const hitTest = (s:Shape, x:number, y:number) =>{
+    const path = buildPath(s);
+    console.log("path: ", path)
+    return (s.filled && s.tool !== 'pen' && hitCtx.isPointInPath(path, x, y)) || hitCtx.isPointInStroke(path, x, y)
+}
+
+export const moveShape = (s:Shape, dx:number, dy:number) => {
+    
+    console.log("GrabShape:", s);
+    
+    if(s.tool === 'pen') s.points.forEach(p => {p.x += dx; p.y += dy});
+    else{s.start.x += dx; s.start.y += dy; s.end.x += dx; s.end.y += dy}
 }
