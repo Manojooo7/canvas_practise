@@ -69,14 +69,17 @@ export const BOX_SHAPES = {
 
 export type BoxTool = keyof typeof BOX_SHAPES
 
-export const isBoxTool = (t: string): t is BoxTool => t in BOX_SHAPES
+export const isBoxTool = (t: string | null): t is BoxTool => {
+    if(t === null) return false
+    return t in BOX_SHAPES
+}
 
 export type Shape = {id: string; filled: boolean; strok: boolean; fillColor: string, strokColor:string} & (
     | {tool: 'pen'; points: Point[]; closed: boolean}
     | {tool: BoxTool; start: Point; end: Point}
 );
 
-const buildPath = (s:Shape):Path2D =>{
+const buildPath = (s:Shape):Path2D => {
     const p = new Path2D();
     if(s.tool === 'pen'){
         const pts = s.points;
@@ -101,6 +104,15 @@ const buildPath = (s:Shape):Path2D =>{
     return p
 }
 
+// ponytail: manual invalidation; anything that mutates a shape's geometry must call invalidatePath(s)
+const pathCache = new WeakMap<Shape, Path2D>();
+export const invalidatePath = (s: Shape) => pathCache.delete(s);
+const getPath = (s: Shape) => {
+    let p = pathCache.get(s);
+    if (!p) pathCache.set(s, (p = buildPath(s)));
+    return p;
+}
+
 
 // type ShapeFn = (ctx: Ctx, x: number, y: number, startX: number, startY: number) => void
 
@@ -118,7 +130,7 @@ export const drawShape = (
     ctx: Ctx,
     s: Shape
 ) =>{
-    const path = buildPath(s);
+    const path = getPath(s);
     ctx.fillStyle = ctx.strokeStyle = s.strokColor;
     if(s.filled && (s.tool !== 'pen' || s.closed)) ctx.fill(path);
     if(s.strok) ctx.stroke(path)
@@ -128,8 +140,7 @@ const hitCtx = document.createElement('canvas').getContext('2d')!;
 hitCtx.lineWidth = 20;
 
 export const hitTest = (s:Shape, x:number, y:number) =>{
-    const path = buildPath(s);
-    console.log("path: ", path)
+    const path = getPath(s);
     return (s.filled && s.tool !== 'pen' && hitCtx.isPointInPath(path, x, y)) || hitCtx.isPointInStroke(path, x, y)
 }
 
@@ -139,4 +150,5 @@ export const moveShape = (s:Shape, dx:number, dy:number) => {
     
     if(s.tool === 'pen') s.points.forEach(p => {p.x += dx; p.y += dy});
     else{s.start.x += dx; s.start.y += dy; s.end.x += dx; s.end.y += dy}
+    invalidatePath(s);
 }

@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState } from "react"
 import {Pen, Circle, Square, Triangle, Save, RemoveFormatting, type LucideIcon, Diamond, PenLine, TriangleRightIcon, Move} from 'lucide-react'
 import {Button} from '../components/ui/button'
-import {drawShape, hitTest, isBoxTool, moveShape, type Shape} from "./shapesDrawer"
+import {drawShape, hitTest, invalidatePath, isBoxTool, moveShape, type Shape} from "./shapesDrawer"
 type tool = {
   label: string,
   icon: LucideIcon
@@ -46,8 +46,8 @@ function App() {
 
   const canvasRef = useRef<HTMLCanvasElement | null>(null);
   const preveiewCanvasRef = useRef<HTMLCanvasElement | null>(null);
-  const [selectedTool, setSelectedTool] = useState<string>('pen')
-  const selectedToolRef = useRef(selectedTool);
+  const [selectedTool, setSelectedTool] = useState<string | null>(null)
+  const selectedToolRef = useRef<string | null>(selectedTool);
  
   useEffect(() => {
     selectedToolRef.current = selectedTool
@@ -60,14 +60,14 @@ function App() {
 
     const context = canvas.getContext('2d');
     const previewCanvasContext = previewCanvas.getContext('2d')
+    if (!context || !previewCanvasContext) return;
     
     let draft: Shape | null = null;
     let grabbed: Shape | null = null;
-    let isDrawing = false;
-    let lastX = 0;
-    let lastY = 0;
+    let isDrawing:boolean = false;
+    let lastX:number = 0;
+    let lastY:number = 0;
     const shapes: Shape[] = [];
-    if (!context || !previewCanvasContext) return;
     const clear = (c:CanvasRenderingContext2D, el:HTMLCanvasElement)=> c.clearRect(0, 0, el.clientWidth, el.clientHeight)
     const render = () => {
       clear(context, canvas)
@@ -76,14 +76,15 @@ function App() {
 
     const resizeCanvas=()=>{
       const rect = canvas.getBoundingClientRect();
+      const previewCanvasReact = previewCanvas.getBoundingClientRect();
       const dpr = window.devicePixelRatio || 1;
 
-      [canvas, previewCanvas].forEach((element) =>{
+      const resize = (element:HTMLCanvasElement, rect:DOMRect) => {
         element.width = rect.width * dpr;
         element.height = rect.height * dpr;
         
         const ctx = element.getContext('2d')
-        ctx?.setTransform(dpr, 0, 0, dpr, 0, 0);
+        ctx?.setTransform(dpr, 0, 0, dpr, 0, 0); // Need to learn about setTransform
   
         // pen styling
         if(!ctx) return;
@@ -91,12 +92,19 @@ function App() {
         ctx.lineCap = "round";
         ctx.lineJoin = "round";
         ctx.strokeStyle = "black"
-      })
+      }
+
+      resize(canvas, rect)
+      resize(previewCanvas, previewCanvasReact)
+      render() // Without calling render each time resize event will fire untill i redraw something on the canvas which eventually call the render funciton again will so nothing on the canvas
       
     }
+    let raf = 0;
 
-    resizeCanvas();
-    window.addEventListener('resize', resizeCanvas)
+    const onResize=()=>{
+      cancelAnimationFrame(raf)
+      raf = requestAnimationFrame(resizeCanvas)
+    }
     
     const getPosition=(event:MouseEvent) => {
       const rect = previewCanvas.getBoundingClientRect();
@@ -161,6 +169,7 @@ function App() {
       if(!draft) return;
       if(draft.tool === 'pen') draft.points.push(p);
       else draft.end = p
+      invalidatePath(draft)
 
       console.log("Draft: ", draft);
       console.log("Shapes: ", shapes);
@@ -184,7 +193,8 @@ function App() {
         render() 
       }
     }
-
+    
+    window.addEventListener('resize', onResize)
     previewCanvas.addEventListener('pointerdown', startDrawing);
     previewCanvas.addEventListener('pointermove', draw);
     previewCanvas.addEventListener('pointerup', stopDrawing);
@@ -196,7 +206,8 @@ function App() {
     // context.fill();
 
     return () => {    
-      window.removeEventListener('resize', resizeCanvas)
+      window.removeEventListener('resize', onResize)
+      cancelAnimationFrame(raf)
       previewCanvas.removeEventListener('pointerdown', startDrawing);
       previewCanvas.removeEventListener('pointermove', draw);
       previewCanvas.removeEventListener('pointerup', stopDrawing);
